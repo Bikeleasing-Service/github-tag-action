@@ -60,13 +60,15 @@ export function isPr(ref: string) {
 export function getLatestTag(
   tags: Tags,
   prefixRegex: RegExp,
-  tagPrefix: string
+  tagPrefix: string,
+  latestTagFilter: string
 ) {
   return (
     tags.find(
       (tag) =>
         prefixRegex.test(tag.name) &&
-        !prerelease(tag.name.replace(prefixRegex, ''))
+        !prerelease(tag.name.replace(prefixRegex, '')) &&
+        tag.name.includes(latestTagFilter)
     ) || {
       name: `${tagPrefix}0.0.0`,
       commit: {
@@ -79,11 +81,16 @@ export function getLatestTag(
 export function getLatestPrereleaseTag(
   tags: Tags,
   identifier: string,
-  prefixRegex: RegExp
+  prefixRegex: RegExp,
+  latestPrereleaseTagFilter: string
 ) {
   return tags
     .filter((tag) => prerelease(tag.name.replace(prefixRegex, '')))
-    .find((tag) => tag.name.replace(prefixRegex, '').match(identifier));
+    .find(
+        (tag) =>
+            tag.name.replace(prefixRegex, '').match(identifier) &&
+            tag.name.includes(latestPrereleaseTagFilter)
+    );
 }
 
 export function mapCustomReleaseRules(customReleaseTypes: string) {

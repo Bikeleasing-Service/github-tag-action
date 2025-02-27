@@ -20,6 +20,8 @@ export default async function main() {
   const defaultPreReleaseBump = core.getInput('default_prerelease_bump') as
     | ReleaseType
     | 'false';
+  const forceDefaultPreReleaseBump =
+    core.getInput('force_default_prerelease_bump') === 'true';
   const tagPrefix = core.getInput('tag_prefix');
   const customTag = core.getInput('custom_tag');
   const releaseBranches = core.getInput('release_branches');
@@ -31,6 +33,8 @@ export default async function main() {
   const dryRun = core.getInput('dry_run');
   const customReleaseRules = core.getInput('custom_release_rules');
   const shouldFetchAllTags = core.getInput('fetch_all_tags');
+  const latestTagFilter = core.getInput('latest_tag_filter');
+  const latestPrereleaseTagFilter = core.getInput('latest_prerelease_tag_filter');
   const commitSha = core.getInput('commit_sha');
 
   let mappedReleaseRules;
@@ -73,11 +77,17 @@ export default async function main() {
     prefixRegex,
     /true/i.test(shouldFetchAllTags)
   );
-  const latestTag = getLatestTag(validTags, prefixRegex, tagPrefix);
+  const latestTag = getLatestTag(
+    validTags,
+    prefixRegex,
+    tagPrefix,
+    latestTagFilter
+  );
   const latestPrereleaseTag = getLatestPrereleaseTag(
     validTags,
     identifier,
-    prefixRegex
+    prefixRegex,
+    latestPrereleaseTagFilter
   );
 
   let commits: Await<ReturnType<typeof getCommits>>;
@@ -93,14 +103,25 @@ export default async function main() {
     let previousTag: ReturnType<typeof getLatestTag> | null;
     let previousVersion: SemVer | null;
     if (!latestPrereleaseTag) {
+      core.info(
+        `latestPrereleaseTag not set, using latestTag.`
+      );
       previousTag = latestTag;
     } else {
-      previousTag = gte(
-        latestTag.name.replace(prefixRegex, ''),
-        latestPrereleaseTag.name.replace(prefixRegex, '')
-      )
-        ? latestTag
-        : latestPrereleaseTag;
+      core.info(`latestTag: ${latestTag.name}`);
+      core.info(`latestPrereleaseTag: ${latestPrereleaseTag.name}`);
+      core.info(`prefixRegex: ${prefixRegex.toString()}`);
+      if (forceDefaultPreReleaseBump) {
+        previousTag = latestPrereleaseTag
+      } else {
+        previousTag = gte(
+          latestTag.name.replace(prefixRegex, ''),
+          latestPrereleaseTag.name.replace(prefixRegex, '')
+        )
+          ? latestTag
+          : latestPrereleaseTag;
+      }
+      core.info(`previousTag: ${previousTag.name}`);
     }
 
     if (!previousTag) {
@@ -153,8 +174,8 @@ export default async function main() {
       return;
     }
 
-    // If we don't have an automatic bump for the prerelease, just set our bump as the default
-    if (isPrerelease && !bump) {
+    // If we don't have an automatic bump for the prerelease or in case we want to force it, set to default.
+    if (isPrerelease && (!bump || forceDefaultPreReleaseBump)) {
       bump = defaultPreReleaseBump;
     }
 
