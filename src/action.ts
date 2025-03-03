@@ -65,6 +65,11 @@ export default async function main() {
   const isPullRequest = isPr(GITHUB_REF);
   const isPrerelease = !isReleaseBranch && !isPullRequest && isPreReleaseBranch;
 
+  core.debug('isReleaseBranch: ' + isPreReleaseBranch);
+  core.debug('isPullRequest: ' + isPreReleaseBranch);
+  core.debug('isPreReleaseBranch: ' + isPreReleaseBranch);
+  core.debug('isPrerelease:' +  isPrerelease);
+
   // Sanitize identifier according to
   // https://semver.org/#backusnaur-form-grammar-for-valid-semver-versions
   const identifier = (
@@ -111,17 +116,12 @@ export default async function main() {
       core.info(`latestTag: ${latestTag.name}`);
       core.info(`latestPrereleaseTag: ${latestPrereleaseTag.name}`);
       core.info(`prefixRegex: ${prefixRegex.toString()}`);
-      if (forceDefaultPreReleaseBump) {
-        previousTag = latestPrereleaseTag
-      } else {
-        previousTag = gte(
-          latestTag.name.replace(prefixRegex, ''),
-          latestPrereleaseTag.name.replace(prefixRegex, '')
-        )
-          ? latestTag
-          : latestPrereleaseTag;
-      }
-      core.info(`previousTag: ${previousTag.name}`);
+      previousTag = gte(
+        latestTag.name.replace(prefixRegex, ''),
+        latestPrereleaseTag.name.replace(prefixRegex, '')
+      )
+        ? latestTag
+        : latestPrereleaseTag;
     }
 
     if (!previousTag) {
